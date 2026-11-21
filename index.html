@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="uz" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GhostGram — Web Messenger</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#17212b" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-circle">👻</div>
+        <h1>GhostGram</h1>
+        <p>Ghost rejimi, Anti-Delete lokal xotira va jonli yozish messenjeri</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" type="button">Kirish</button>
+        <button id="tab-register" class="auth-tab" type="button">Ro'yxatdan o'tish</button>
+      </div>
+
+      <form id="auth-form" class="auth-form">
+        <div class="field" id="field-display-name" style="display:none;">
+          <label for="input-display-name">Ismingiz</label>
+          <input id="input-display-name" type="text" placeholder="Masalan: Azizbek" maxlength="40" />
+        </div>
+        <div class="field">
+          <label for="input-username">Username</label>
+          <input id="input-username" type="text" placeholder="azizbek_dev" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="input-password">Parol</label>
+          <input id="input-password" type="password" placeholder="Kamida 4 ta belgi" required autocomplete="current-password" />
+        </div>
+        <div id="auth-error" class="auth-error" hidden></div>
+        <button id="auth-submit" class="btn-primary" type="submit">Kirish</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app-shell" class="app-shell" hidden>
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <header class="sidebar-header">
+        <div class="brand-row">
+          <div class="user-self" id="self-profile-btn" title="Profil">
+            <div class="avatar sm" id="self-avatar">A</div>
+            <div class="self-meta">
+              <span id="self-name" class="self-name">Foydalanuvchi</span>
+              <span id="ws-status" class="ws-status">Ulanmoqda...</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button id="btn-ghost-toggle" class="icon-pill ghost-pill" title="Ghost rejimi sozlamalari">
+              <span>👻</span>
+              <span id="ghost-pill-label">Ghost</span>
+            </button>
+            <button id="btn-vault" class="icon-btn" title="Lokal xotira (O'chirilganlar)">
+              <span>🗄️</span>
+              <span id="vault-badge" class="mini-badge" hidden>0</span>
+            </button>
+            <button id="btn-new-group" class="icon-btn" title="Yangi guruh">👥</button>
+            <button id="btn-theme" class="icon-btn" title="Mavzuni almashtirish">☀️</button>
+            <button id="btn-logout" class="icon-btn" title="Chiqish">🚪</button>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="global-search" type="text" placeholder="Chat yoki @username qidirish..." autocomplete="off" />
+        </div>
+      </header>
+
+      <div id="search-results" class="search-results" hidden></div>
+      <div id="chat-list" class="chat-list"></div>
+    </aside>
+
+    <!-- CHAT AREA -->
+    <main id="chat-main" class="chat-main">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-card">
+          <div class="empty-icon">👻</div>
+          <h2>Suhbatni boshlang</h2>
+          <p>Chap tarafdan chatni tanlang yoki qidiruv orqali boshqa foydalanuvchini toping.</p>
+          <div class="feature-pills">
+            <span>👻 Ghost rejimi</span>
+            <span>🗄️ Anti-Delete lokal kesh</span>
+            <span>⚡ Jonli yozish ko'rinishi</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="active-chat" class="active-chat" hidden>
+        <header class="chat-header">
+          <div class="chat-header-left">
+            <button id="btn-back-mobile" class="icon-btn mobile-only" title="Orqaga">←</button>
+            <div class="avatar" id="chat-avatar">?</div>
+            <div class="chat-title-wrap">
+              <div id="chat-title" class="chat-title">Chat</div>
+              <div id="chat-subtitle" class="chat-subtitle">yaqinda bo'lgan</div>
+            </div>
+          </div>
+          <div class="chat-header-right">
+            <span id="chat-ghost-indicator" class="ghost-active-tag" hidden>👻 Ghost faol</span>
+            <button id="btn-chat-search" class="icon-btn" title="Chat ichida qidirish">🔍</button>
+          </div>
+        </header>
+
+        <div id="in-chat-search-bar" class="in-chat-search-bar" hidden>
+          <input id="in-chat-search-input" type="text" placeholder="Xabarlar ichidan qidirish..." />
+          <button id="btn-close-chat-search" class="icon-btn" type="button">✕</button>
+        </div>
+
+        <div id="messages-container" class="messages-container">
+          <div id="messages-list" class="messages-list"></div>
+          <!-- LIVE TYPING STREAM CONTAINER -->
+          <div id="live-drafts-container" class="live-drafts-container"></div>
+        </div>
+
+        <!-- REPLY / EDIT BAR -->
+        <div id="composer-context" class="composer-context" hidden>
+          <div class="context-bar-accent"></div>
+          <div class="context-bar-body">
+            <div id="context-bar-title" class="context-bar-title">Javob berish</div>
+            <div id="context-bar-text" class="context-bar-text"></div>
+          </div>
+          <button id="btn-cancel-context" class="icon-btn" type="button">✕</button>
+        </div>
+
+        <!-- ATTACHMENT PREVIEW -->
+        <div id="attachment-bar" class="attachment-bar" hidden>
+          <span id="attachment-name">fayl.png</span>
+          <span id="attachment-size" class="muted"></span>
+          <button id="btn-cancel-attachment" class="icon-btn" type="button">✕</button>
+        </div>
+
+        <footer class="composer">
+          <input id="file-input" type="file" hidden />
+          <button id="btn-attach" class="icon-btn" type="button" title="Fayl yoki rasm biriktirish">📎</button>
+          <textarea id="message-input" rows="1" placeholder="Xabar yozing..."></textarea>
+          <button id="btn-send" class="btn-send" type="button" title="Yuborish">➤</button>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODAL: GHOST MODE SETTINGS -->
+  <div id="modal-ghost" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>👻 Ghost rejimi va Maxfiylik</h3>
+        <button class="icon-btn modal-close" data-close="modal-ghost">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="toggle-row highlight">
+          <div>
+            <strong>Ghost rejimini yoqish</strong>
+            <small>Nicegram / AyuGram uslubida ko'rinmas rejim</small>
+          </div>
+          <input id="chk-ghost-enabled" type="checkbox" />
+        </label>
+
+        <label class="toggle-row">
+          <div>
+            <strong>O'qilganlikni yashirish (✓✓)</strong>
+            <small>Xabarni o'qiganingiz narigi tomonga bildirilmaydi</small>
+          </div>
+          <input id="chk-hide-read" type="checkbox" />
+        </label>
+
+        <label class="toggle-row">
+          <div>
+            <strong>Onlayn holatini yashirish</strong>
+            <small>Boshqalarga onlayn ekaningiz ko'rinmaydi</small>
+          </div>
+          <input id="chk-hide-online" type="checkbox" />
+        </label>
+
+        <label class="toggle-row">
+          <div>
+            <strong>Yozayotganimni yashirish</strong>
+            <small>Ghost faol bo'lganda jonli yozish matningiz ketmaydi</small>
+          </div>
+          <input id="chk-hide-typing" type="checkbox" />
+        </label>
+
+        <hr class="modal-divider" />
+
+        <label class="toggle-row">
+          <div>
+            <strong>⚡ Jonli yozishni (Live Typing) uzatish</strong>
+            <small>Hali yuborilmagan xabaringiz narigi insonga jonli ko'rinadi</small>
+          </div>
+          <input id="chk-live-share" type="checkbox" />
+        </label>
+
+        <label class="toggle-row">
+          <div>
+            <strong>🗄️ Anti-Delete lokal xotira (IndexedDB)</strong>
+            <small>O'chirilgan xabar va fayllarni qurilma xotirasida saqlab qolish</small>
+          </div>
+          <input id="chk-anti-delete" type="checkbox" checked />
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-ghost" class="btn-primary" type="button">Saqlash</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ANTI-DELETE LOCAL VAULT -->
+  <div id="modal-vault" class="modal-backdrop" hidden>
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <h3>🗄️ Lokal Xotira — O'chirilgan xabar va fayllar</h3>
+        <button class="icon-btn modal-close" data-close="modal-vault">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="vault-info">
+          Qabul qilingan barcha xabar va fayllar brauzer/telefon xotirasida (IndexedDB) keshlanadi.
+          Yuboruvchi ularni serverdan o'chirsa ham, nusxasi shu yerda saqlanib qoladi.
+        </p>
+        <div id="vault-stats" class="vault-stats"></div>
+        <div id="vault-list" class="vault-list"></div>
+      </div>
+      <div class="modal-footer space-between">
+        <button id="btn-clear-vault" class="btn-danger" type="button">Keshni tozalash</button>
+        <button class="btn-secondary modal-close" data-close="modal-vault" type="button">Yopish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NEW GROUP -->
+  <div id="modal-group" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>👥 Yangi guruh yaratish</h3>
+        <button class="icon-btn modal-close" data-close="modal-group">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="group-title-input">Guruh nomi</label>
+          <input id="group-title-input" type="text" placeholder="Masalan: Python Dev Jamoasi" maxlength="60" />
+        </div>
+        <div class="field">
+          <label for="group-user-search">A'zolarni qo'shish</label>
+          <input id="group-user-search" type="text" placeholder="@username bo'yicha qidiring..." />
+        </div>
+        <div id="group-selected-chips" class="chip-list"></div>
+        <div id="group-user-results" class="mini-user-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-create-group" class="btn-primary" type="button">Guruh yaratish</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
