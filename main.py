@@ -21,13 +21,18 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, database as db
+try:
+    from . import auth, database as db
+except ImportError:
+    import auth
+    import database as db
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "static"
+HERE = Path(__file__).resolve().parent
+STATIC_DIR = (HERE.parent / "static") if (HERE.parent / "static").exists() else (
+    (HERE / "static") if (HERE / "static").exists() else HERE
+)
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
 
 AVATAR_COLORS = [
@@ -183,7 +188,6 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=409, detail="Bu username allaqachon band")
     color = random.choice(AVATAR_COLORS)
     user = db.create_user(username, req.display_name, auth.hash_password(req.password), color)
-    # Create personal "Saqlangan xabarlar" (Saved Messages) chat
     db.get_or_create_direct_chat(user["id"], user["id"])
     token = auth.create_token(user["id"], user["username"])
     return {"token": token, "user": db.serialize_user(user, include_ghost=True)}
@@ -272,7 +276,6 @@ async def send_message(chat_id: int, req: SendMessageRequest, user=Depends(get_c
         file_size=req.file_size,
         reply_to_id=req.reply_to_id,
     )
-    # Clear live typing draft for this sender
     await manager.broadcast_to_chat(
         chat_id,
         {"type": "live_draft", "chat_id": chat_id, "user_id": user["id"], "text": ""},
@@ -313,7 +316,6 @@ async def delete_message(message_id: int, user=Depends(get_current_user)):
 async def mark_read(chat_id: int, user=Depends(get_current_user)):
     if not db.is_chat_member(chat_id, user["id"]):
         raise HTTPException(status_code=403, detail="Ruxsat yo'q")
-    # Ghost Mode: do NOT mark read or notify sender if hide_read_receipts is active
     if user["ghost_enabled"] and user["hide_read_receipts"]:
         return {"ghost_blocked": True, "read_ids": []}
     read_ids = db.mark_chat_read(chat_id, user["id"])
@@ -418,7 +420,6 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(default="")):
                 fresh_user = db.get_user_by_id(user_id)
                 if not fresh_user:
                     continue
-                # Respect Ghost Mode hide_typing and live_typing_share preference
                 if (fresh_user["ghost_enabled"] and fresh_user["hide_typing"]) or not fresh_user["live_typing_share"]:
                     continue
                 await manager.broadcast_to_chat(
@@ -484,9 +485,22 @@ async def websocket_endpoint(ws: WebSocket, token: str = Query(default="")):
             await manager.broadcast_presence(user_id, False)
 
 
-# ---------- Static Frontend ----------
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# ---------- Static Frontend (works both with static/ folder and flat root) ----------
+ALLOWED_STATIC = {
+    "style.css": "text/css",
+    "app.js": "application/javascript",
+    "manifest.json": "application/manifest+json",
+}
+
+
+@app.get("/static/{filename}")
+def static_asset(filename: str):
+    if filename not in ALLOWED_STATIC:
+        raise HTTPException(status_code=404, detail="Fayl topilmadi")
+    path = STATIC_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Fayl topilmadi")
+    return FileResponse(str(path), media_type=ALLOWED_STATIC[filename])
 
 
 @app.get("/manifest.json")
