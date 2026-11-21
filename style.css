@@ -1,3 +1,7 @@
+CSS
+[hidden] {
+  display: none !important;
+}
 :root {
   --bg-main: #0e1621;
   --bg-sidebar: #17212b;
